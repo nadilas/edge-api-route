@@ -1,7 +1,4 @@
 /**
- * reworked to only run the response generation if non-preflight and passed cors test
- * 
- * original: https://github.com/vercel/examples/tree/main/edge-functions/cors
  * Multi purpose CORS lib.
  * Note: Based on the `cors` package in npm but using only
  * web APIs. Feel free to use it in your own projects.
@@ -108,8 +105,7 @@
    // If there's no origin we won't touch the response
    if (!originHeaders) return resFn(req);
  
-   const res = await resFn(req);
-   const { headers } = res;
+   const headers: Headers = new Headers();
    const mergeHeaders = (v: string, k: string) => {
      if (k === "Vary") headers.append(k, v);
      else headers.set(k, v);
@@ -145,13 +141,21 @@
        headers.set("Access-Control-Max-Age", String(opts.maxAge));
      }
  
-     if (opts.preflightContinue) return res;
+     if (opts.preflightContinue) return resFn(req);
  
      headers.set("Content-Length", "0");
      return new Response(null, { status: opts.optionsSuccessStatus, headers });
    }
  
    // If we got here, it's a normal request
+   const res = await resFn(req);
+ 
+   // merge in headers
+   headers.forEach((v, k) => {
+     if (k === "Vary") res.headers.append(k, v);
+     else res.headers.set(k, v);
+   });
+ 
    return res;
  }
  
